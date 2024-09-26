@@ -1,12 +1,40 @@
 const AWS = require("aws-sdk");
 const ec2 = new AWS.EC2({ region: "eu-north-1" });
+require("dotenv").config();
 
-const amiId = process.env.AMI_ID;
+const amiKeyPairs = process.env.AMI_KEY_PAIRS.split(",").map((pair) => {
+  const [amiId, keyName] = pair.split(":");
+  return { amiId, keyName };
+});
+
+const amiId = amiKeyPairs[0].amiId;
+const keyName = amiKeyPairs[0].keyName;
+
 const instanceType = process.env.INSTANCE_TYPE;
-const keyName = process.env.KEY_NAME;
 const securityGroupIds = [process.env.SECURITY_GROUP_ID];
 
+async function checkRunningInstance(ec2Instance) {
+  const params = {
+    Filters: [
+      { Name: "image-id", Values: [ec2Instance.amiId] },
+      { Name: "instance-state-name", Values: ["running", "pending"] },
+      { Name: "key-name", Values: [ec2Instance.keyName] },
+    ],
+  };
+
+  const result = await ec2.describeInstances(params).promise();
+  const instance = result.Reservations[0]?.Instances[0];
+
+  return instance
+    ? {
+        instanceId: instance.InstanceId,
+        publicIp: instance.PublicIpAddress,
+      }
+    : null;
+}
+
 async function startEC2Instance() {
+  // TODO get the AMI ID and key name from the event
   const params = {
     ImageId: amiId,
     InstanceType: instanceType,
@@ -20,6 +48,7 @@ async function startEC2Instance() {
 }
 
 async function tagEC2Instance(instanceId) {
+  // TODO get the key name from the event
   await ec2
     .createTags({
       Resources: [instanceId],
@@ -36,6 +65,7 @@ async function getPublicIP(instanceId) {
 }
 
 module.exports = {
+  checkRunningInstance,
   startEC2Instance,
   tagEC2Instance,
   getPublicIP,
