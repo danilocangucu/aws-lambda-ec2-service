@@ -1,10 +1,12 @@
 {
   "name": "lambda-goldenrack",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "bundle": "zip -r startEC2Instance.zip dist/ node_modules/ .env",
+    "build-and-bundle": "npm run build && npm run bundle",
+    "deploy": "aws lambda update-function-code --function-name your-function-name --zip-file fileb://lambda-bundle.zip"
   },
   "keywords": [],
   "author": "",
@@ -12,5 +14,11 @@
   "dependencies": {
     "aws-sdk": "^2.1691.0",
     "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.3",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.2"
   }
 }

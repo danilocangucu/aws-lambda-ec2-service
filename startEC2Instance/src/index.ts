@@ -1,18 +1,16 @@
-const {
+import {
   startEC2Instance,
   tagEC2Instance,
   getPublicIP,
   checkRunningInstance,
-} = require("./services/ec2Service");
-const { updateRoute53 } = require("./services/route53Service");
-require("dotenv").config();
+} from "./services/ec2Service";
+import { updateRoute53 } from "./services/route53Service";
+import * as dotenv from "dotenv";
+import { getAmiKeyPairs } from "./utils/dotenv";
 
-// TODO use TypeScript instead of JavaScript
+dotenv.config();
 
-const amiKeyPairs = process.env.AMI_KEY_PAIRS.split(",").map((pair) => {
-  const [amiId, keyName] = pair.split(":");
-  return { amiId, keyName };
-});
+const amiKeyPairs = getAmiKeyPairs("AMI_KEY_PAIRS");
 
 exports.handler = async () => {
   try {
@@ -34,12 +32,22 @@ exports.handler = async () => {
 
     // TODO pass the amiKeyPair to the startEC2Instance function
     const instanceId = await startEC2Instance();
+
+    if (!instanceId) {
+      throw new Error("Failed to start EC2 instance.");
+    }
+
     console.log(`Successfully started EC2 instance: ${instanceId}`);
 
     // TODO pass the key name to the tagEC2Instance function
     await tagEC2Instance(instanceId);
 
     const publicIp = await getPublicIP(instanceId);
+
+    if (!publicIp) {
+      throw new Error("Failed to get public IP address.");
+    }
+
     console.log(`Public IP of the instance: ${publicIp}`);
 
     await updateRoute53(publicIp);
@@ -53,7 +61,7 @@ exports.handler = async () => {
     console.error("Error:", error);
     return {
       statusCode: 500,
-      body: `Error: ${error.message}`,
+      body: `Error: ${(error as Error).message}`,
     };
   }
 };

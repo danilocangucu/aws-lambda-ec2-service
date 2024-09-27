@@ -1,11 +1,12 @@
-const AWS = require("aws-sdk");
+import AWS from "aws-sdk";
+import { getEnvVar } from "../utils/dotenv";
 const route53 = new AWS.Route53();
 
-const hostedZoneId = process.env.HOSTED_ZONE_ID;
+const hostedZoneId = getEnvVar("HOSTED_ZONE_ID");
 // TODO get the DNS name from the event via keyName
-const dnsName = process.env.DNS_NAME;
+const dnsName = getEnvVar("DNS_NAME");
 
-async function updateRoute53(publicIp) {
+export async function updateRoute53(publicIp: string) {
   // TODO get the DNS name from the event
   const route53Params = {
     HostedZoneId: hostedZoneId,
@@ -25,7 +26,3 @@ async function updateRoute53(publicIp) {
   };
   await route53.changeResourceRecordSets(route53Params).promise();
 }
-
-module.exports = {
-  updateRoute53,
-};
