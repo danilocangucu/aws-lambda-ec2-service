@@ -12,8 +12,24 @@ dotenv.config();
 
 const amiKeyPairs = getAmiKeyPairs("AMI_KEY_PAIRS");
 
-exports.handler = async () => {
+exports.handler = async (event: any) => {
   try {
+    const { amiKeyPair } = event;
+
+    if (!amiKeyPair) {
+      throw new Error("Please provide the AMI key pair.");
+    }
+
+    const matchedKeyPair = amiKeyPairs.find(
+      (keyPair) =>
+        keyPair.amiId === amiKeyPair.amiId &&
+        keyPair.keyName === amiKeyPair.keyName
+    );
+
+    if (!matchedKeyPair) {
+      throw new Error("Invalid AMI key pair.");
+    }
+
     // TODO get amiKeyPair from the event
     // TODO validate the amiKeyPair against the AMI_KEY_PAIRS environment variable
 
