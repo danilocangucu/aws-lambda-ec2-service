@@ -2,47 +2,35 @@ import {
   startEC2Instance,
   tagEC2Instance,
   getPublicIP,
-  checkRunningInstance,
+  findEC2Instance,
 } from "./services/ec2Service";
 import { updateRoute53 } from "./services/route53Service";
 import * as dotenv from "dotenv";
 import { getAmiKeyPairs } from "./utils/dotenv";
+import { validate, eventSchema } from "./utils/validators";
+import { matchAmiKeyPair } from "./utils/ec2Utils";
 
 dotenv.config();
 
-const amiKeyPairs = getAmiKeyPairs("AMI_KEY_PAIRS");
-
 exports.handler = async (event: any) => {
   try {
+    validate(event, eventSchema);
+
     const { amiKeyPair } = event;
 
-    if (!amiKeyPair) {
-      throw new Error("Please provide the AMI key pair.");
-    }
+    const amiKeyPairs = getAmiKeyPairs("AMI_KEY_PAIRS");
 
-    const matchedKeyPair = amiKeyPairs.find(
-      (keyPair) =>
-        keyPair.amiId === amiKeyPair.amiId &&
-        keyPair.keyName === amiKeyPair.keyName
-    );
+    const matchedKeyPair = matchAmiKeyPair(amiKeyPairs, amiKeyPair);
 
-    if (!matchedKeyPair) {
-      throw new Error("Invalid AMI key pair.");
-    }
+    const foundEC2Instance = await findEC2Instance(matchedKeyPair);
 
-    // TODO get amiKeyPair from the event
-    // TODO validate the amiKeyPair against the AMI_KEY_PAIRS environment variable
-
-    const goldenrack = amiKeyPairs[0];
-    const runningInstance = await checkRunningInstance(goldenrack);
-
-    if (runningInstance) {
+    if (foundEC2Instance) {
       console.log(
-        `Instance already running: ${runningInstance.instanceId} with IP: ${runningInstance.publicIp}`
+        `Instance already running: ${foundEC2Instance.instanceId} with IP: ${foundEC2Instance.publicIp}`
       );
       return {
         statusCode: 204,
-        body: `Instance already running: ${runningInstance.instanceId} with IP: ${runningInstance.publicIp}`,
+        body: `Instance already running: ${foundEC2Instance.instanceId} with IP: ${foundEC2Instance.publicIp}`,
       };
     }
 
