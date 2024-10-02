@@ -1,21 +1,11 @@
-import AWS from "aws-sdk"; // Use ES6 import for TypeScript
+import AWS from "aws-sdk";
 import dotenv from "dotenv";
 import { getAmiKeyPairs } from "../utils/dotenv";
+import { AmiKeyPair, EC2Instance, EC2InstanceStatus } from "../types/ec2Types";
 
 dotenv.config();
 
 const ec2 = new AWS.EC2({ region: "eu-north-1" });
-
-// TODO organize the interfaces in a separate file
-interface EC2Instance {
-  amiId: string;
-  keyName: string;
-}
-
-interface RunningInstance {
-  instanceId: string;
-  publicIp?: string;
-}
 
 const amiKeyPairs = getAmiKeyPairs("AMI_KEY_PAIRS");
 const amiId: string = amiKeyPairs[0].amiId;
@@ -24,14 +14,21 @@ const keyName: string = amiKeyPairs[0].keyName;
 const instanceType: string = process.env.INSTANCE_TYPE || "t3.micro";
 const securityGroupIds: string[] = [process.env.SECURITY_GROUP_ID || ""];
 
-export async function checkRunningInstance(
-  ec2Instance: EC2Instance
-): Promise<RunningInstance | null> {
+export async function findEC2Instance(
+  amiKeyPair: AmiKeyPair,
+  ec2InstanceStatus?: EC2InstanceStatus[]
+): Promise<EC2Instance | null> {
   const params = {
     Filters: [
-      { Name: "image-id", Values: [ec2Instance.amiId] },
-      { Name: "instance-state-name", Values: ["running", "pending"] },
-      { Name: "key-name", Values: [ec2Instance.keyName] },
+      { Name: "image-id", Values: [amiKeyPair.amiId] },
+      {
+        Name: "instance-state-name",
+        Values: ec2InstanceStatus || [
+          EC2InstanceStatus.RUNNING,
+          EC2InstanceStatus.PENDING,
+        ],
+      },
+      { Name: "key-name", Values: [amiKeyPair.keyName] },
     ],
   };
 
@@ -45,6 +42,9 @@ export async function checkRunningInstance(
     return {
       instanceId: instance.InstanceId,
       publicIp: instance.PublicIpAddress,
+      amiId: instance.ImageId! || "",
+      keyName: instance.KeyName! || "",
+      status: instance.State?.Name as EC2InstanceStatus,
     };
   }
 
