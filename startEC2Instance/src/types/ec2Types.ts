@@ -12,8 +12,13 @@ export enum EC2InstanceStatus {
   SHUTTING_DOWN = "shutting-down",
 }
 
+export enum InstanceType {
+  T3MICRO = "t3.micro",
+}
+
 export interface EC2Instance extends AmiKeyPair {
-  status?: EC2InstanceStatus;
-  instanceId?: string;
-  publicIp?: string;
+  status: EC2InstanceStatus;
+  instanceId: string;
+  publicIp: string;
+  instanceType: InstanceType;
 }
