@@ -1,18 +1,16 @@
-import AWS from "aws-sdk";
+import AWS, { EC2 } from "aws-sdk";
 import dotenv from "dotenv";
-import { getAmiKeyPairs } from "../utils/dotenv";
-import { AmiKeyPair, EC2Instance, EC2InstanceStatus } from "../types/ec2Types";
+import {
+  AmiKeyPair,
+  EC2Instance,
+  EC2InstanceStatus,
+  InstanceType,
+} from "../types/ec2Types";
+import { convertAWSTypeToLocalEC2Instance } from "../utils/ec2Utils";
 
 dotenv.config();
 
 const ec2 = new AWS.EC2({ region: "eu-north-1" });
-
-const amiKeyPairs = getAmiKeyPairs("AMI_KEY_PAIRS");
-const amiId: string = amiKeyPairs[0].amiId;
-const keyName: string = amiKeyPairs[0].keyName;
-
-const instanceType: string = process.env.INSTANCE_TYPE || "t3.micro";
-const securityGroupIds: string[] = [process.env.SECURITY_GROUP_ID || ""];
 
 export async function findEC2Instance(
   amiKeyPair: AmiKeyPair,
@@ -39,26 +37,24 @@ export async function findEC2Instance(
 
   const instance = result.Reservations[0].Instances?.[0];
   if (instance?.InstanceId && instance?.PublicIpAddress) {
-    return {
-      instanceId: instance.InstanceId,
-      publicIp: instance.PublicIpAddress,
-      amiId: instance.ImageId! || "",
-      keyName: instance.KeyName! || "",
-      status: instance.State?.Name as EC2InstanceStatus,
-    };
+    return convertAWSTypeToLocalEC2Instance(instance);
   }
 
   return null;
 }
 
-export async function startEC2Instance() {
-  // TODO get the AMI ID and key name from the event
+export async function startEC2Instance(
+  amiKeyPair: AmiKeyPair,
+  instanceType: InstanceType
+) {
+  const securityGroupIds: string[] = [process.env.SECURITY_GROUP_ID || ""];
+
   const params = {
-    ImageId: amiId,
-    InstanceType: instanceType,
+    ImageId: amiKeyPair.amiId,
+    InstanceType: instanceType || InstanceType.T3MICRO,
     MinCount: 1,
     MaxCount: 1,
-    KeyName: keyName,
+    KeyName: amiKeyPair.keyName,
     SecurityGroupIds: securityGroupIds,
   };
   const result = await ec2.runInstances(params).promise();
@@ -68,22 +64,29 @@ export async function startEC2Instance() {
     throw new Error("Failed to start EC2 instance");
   }
 
-  return instance.InstanceId;
+  return instance;
 }
 
-export async function tagEC2Instance(instanceId: string) {
-  // TODO get the key name from the event
+export async function tagEC2Instance(ec2Instance: EC2Instance) {
+  if (!ec2Instance.instanceId) {
+    throw new Error("EC2 instance ID is required for tagging.");
+  }
+
   await ec2
     .createTags({
-      Resources: [instanceId],
-      Tags: [{ Key: "Name", Value: keyName }],
+      Resources: [ec2Instance.instanceId],
+      Tags: [{ Key: "Name", Value: ec2Instance.keyName }],
     })
     .promise();
 }
 
-export async function getPublicIP(instanceId: string) {
+export async function getPublicIP(ec2Instance: EC2Instance) {
+  if (!ec2Instance.instanceId) {
+    throw new Error("EC2 instance ID is required for getting the public Id.");
+  }
+
   const instanceDetails = await ec2
-    .describeInstances({ InstanceIds: [instanceId] })
+    .describeInstances({ InstanceIds: [ec2Instance.instanceId] })
     .promise();
 
   const instance = instanceDetails.Reservations?.[0]?.Instances?.[0];
