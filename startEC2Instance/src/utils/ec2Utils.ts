@@ -1,4 +1,10 @@
-import { AmiKeyPair } from "../types/ec2Types";
+import { EC2 } from "aws-sdk";
+import {
+  AmiKeyPair,
+  EC2Instance,
+  EC2InstanceStatus,
+  InstanceType,
+} from "../types/ec2Types";
 
 export const matchAmiKeyPair = (
   amiKeyPairs: AmiKeyPair[],
@@ -15,4 +21,17 @@ export const matchAmiKeyPair = (
   }
 
   return matchedKeyPair;
+};
+
+export const convertAWSTypeToLocalEC2Instance = (
+  response: EC2.Instance
+): EC2Instance => {
+  return {
+    amiId: response.ImageId!,
+    keyName: response.KeyName!,
+    instanceId: response.InstanceId!,
+    publicIp: response.PublicIpAddress!,
+    status: response.State?.Name as EC2InstanceStatus,
+    instanceType: response.InstanceType! as InstanceType,
+  };
 };
