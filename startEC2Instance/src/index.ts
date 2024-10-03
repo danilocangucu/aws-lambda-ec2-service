@@ -8,7 +8,11 @@ import { updateRoute53 } from "./services/route53Service";
 import * as dotenv from "dotenv";
 import { getAmiKeyPairs } from "./utils/dotenv";
 import { validate, eventSchema } from "./utils/validators";
-import { matchAmiKeyPair } from "./utils/ec2Utils";
+import {
+  convertAWSTypeToLocalEC2Instance,
+  matchAmiKeyPair,
+} from "./utils/ec2Utils";
+import { EC2Instance } from "./types/ec2Types";
 
 dotenv.config();
 
@@ -16,7 +20,7 @@ exports.handler = async (event: any) => {
   try {
     validate(event, eventSchema);
 
-    const { amiKeyPair } = event;
+    const { amiKeyPair, instanceType } = event;
 
     const amiKeyPairs = getAmiKeyPairs("AMI_KEY_PAIRS");
 
@@ -34,19 +38,25 @@ exports.handler = async (event: any) => {
       };
     }
 
-    // TODO pass the amiKeyPair to the startEC2Instance function
-    const instanceId = await startEC2Instance();
+    const ec2InstanceResponse = await startEC2Instance(
+      matchedKeyPair,
+      instanceType
+    );
 
-    if (!instanceId) {
+    if (!ec2InstanceResponse) {
       throw new Error("Failed to start EC2 instance.");
     }
 
-    console.log(`Successfully started EC2 instance: ${instanceId}`);
+    const createdInstance: EC2Instance =
+      convertAWSTypeToLocalEC2Instance(ec2InstanceResponse);
 
-    // TODO pass the key name to the tagEC2Instance function
-    await tagEC2Instance(instanceId);
+    console.log(
+      `Successfully started EC2 instance: ${createdInstance.instanceId}`
+    );
 
-    const publicIp = await getPublicIP(instanceId);
+    await tagEC2Instance(createdInstance);
+
+    const publicIp = await getPublicIP(createdInstance);
 
     if (!publicIp) {
       throw new Error("Failed to get public IP address.");
@@ -59,7 +69,7 @@ exports.handler = async (event: any) => {
 
     return {
       statusCode: 200,
-      body: `EC2 instance launched: ${instanceId} with IP: ${publicIp}`,
+      body: `EC2 instance launched: ${createdInstance.instanceId} with IP: ${publicIp}`,
     };
   } catch (error) {
     console.error("Error:", error);
