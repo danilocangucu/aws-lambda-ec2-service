@@ -14,10 +14,7 @@ export const eventSchema = Joi.object({
     .label("Instance Type"),
 });
 
-
-
 export const validate = (data: any, schema: Joi.ObjectSchema) => {
-  console.log(`data: ${JSON.stringify(data)}`);
   const { error } = schema.validate(data);
   if (error) {
     throw new Error(`Validation error: ${error.details[0].message}`);
