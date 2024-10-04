@@ -59,40 +59,29 @@ export async function startEC2Instance(
   };
   const result = await ec2.runInstances(params).promise();
 
-  const instance = result.Instances?.[0];
-  if (!instance) {
-    throw new Error("Failed to start EC2 instance");
-  }
-
-  return instance;
+  return result.Instances?.[0];
 }
 
-export async function tagEC2Instance(ec2Instance: EC2Instance) {
+export async function tagEC2Instance(
+  ec2Instance: EC2Instance
+): Promise<boolean> {
   if (!ec2Instance.instanceId) {
-    throw new Error("EC2 instance ID is required for tagging.");
+    console.error("EC2 instance ID is missing.");
+    return false;
   }
 
-  await ec2
-    .createTags({
-      Resources: [ec2Instance.instanceId],
-      Tags: [{ Key: "Name", Value: ec2Instance.keyName }],
-    })
-    .promise();
+  try {
+    await ec2
+      .createTags({
+        Resources: [ec2Instance.instanceId],
+        Tags: [{ Key: "Name", Value: ec2Instance.keyName }],
+      })
+      .promise();
+    return true;
+  } catch (error) {
+    console.error("Failed to tag EC2 instance:", error);
+    return false;
+  }
 }
 
-export async function getPublicIP(ec2Instance: EC2Instance) {
-  if (!ec2Instance.instanceId) {
-    throw new Error("EC2 instance ID is required for getting the public Id.");
-  }
 
-  const instanceDetails = await ec2
-    .describeInstances({ InstanceIds: [ec2Instance.instanceId] })
-    .promise();
-
-  const instance = instanceDetails.Reservations?.[0]?.Instances?.[0];
-  if (!instance) {
-    throw new Error("Instance not found");
-  }
-
-  return instance.PublicIpAddress;
-}
