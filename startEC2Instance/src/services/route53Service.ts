@@ -1,13 +1,20 @@
 import AWS from "aws-sdk";
-import { getEnvVar } from "../utils/dotenv";
-const route53 = new AWS.Route53();
+import { EC2Instance } from "../types/ec2Types";
+import { getEnvVariable } from "../utils/dotenv";
 
-const hostedZoneId = getEnvVar("HOSTED_ZONE_ID");
-// TODO get the DNS name from the event via keyName
-const dnsName = getEnvVar("DNS_NAME");
+const domainUrl = "danilocangucu.net";
 
-export async function updateRoute53(publicIp: string) {
-  // TODO get the DNS name from the event
+export async function updateRoute53(
+  ec2instance: EC2Instance
+): Promise<boolean> {
+  const route53 = new AWS.Route53();
+
+  const hostedZoneId = getEnvVariable("HOSTED_ZONE_ID");
+  if (!hostedZoneId) {
+    console.error("HOSTED_ZONE_ID is not defined in environment variables.");
+    return false;
+  }
+
   const route53Params = {
     HostedZoneId: hostedZoneId,
     ChangeBatch: {
@@ -15,14 +22,22 @@ export async function updateRoute53(publicIp: string) {
         {
           Action: "UPSERT",
           ResourceRecordSet: {
-            Name: dnsName,
+            Name: `${ec2instance.keyName}.${domainUrl}`,
             Type: "A",
             TTL: 60,
-            ResourceRecords: [{ Value: publicIp }],
+            ResourceRecords: [{ Value: ec2instance.publicIp }],
           },
         },
       ],
     },
   };
-  await route53.changeResourceRecordSets(route53Params).promise();
+
+  try {
+    await route53.changeResourceRecordSets(route53Params).promise();
+    return true;
+  } catch (error) {
+    console.error("Failed to update Route 53:", error);
+    return false;
+  }
 }
+
