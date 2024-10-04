@@ -1,15 +1,7 @@
-export function getEnvVar(varName: string): string {
-  const value = process.env[varName];
-  if (!value) {
-    throw new Error(`${varName} is not defined in environment variables.`);
-  }
-  return value;
-}
+import { AmiKeyPair } from "../types/ec2Types";
 
-// TODO add the AmiKeyPair in types file
-interface AmiKeyPair {
-  amiId: string;
-  keyName: string;
+export function getEnvVariable(envVar: string): string | undefined {
+  return process.env[envVar];
 }
 
 export function getAmiKeyPairs(envVar: string): AmiKeyPair[] {
@@ -25,4 +17,22 @@ export function getAmiKeyPairs(envVar: string): AmiKeyPair[] {
     }
     return { amiId, keyName };
   });
+}
+
+export function parseAmiKeyPairs(
+  amiKeyPairsString: string
+): AmiKeyPair[] | null {
+  const keyPairs = amiKeyPairsString.split(",").map((pair) => {
+    const [amiId, keyName] = pair.split(":");
+    if (!amiId || !keyName) {
+      return null;
+    }
+    return { amiId, keyName };
+  });
+
+  if (keyPairs.some((pair) => pair === null)) {
+    return null;
+  }
+
+  return keyPairs as AmiKeyPair[];
 }
