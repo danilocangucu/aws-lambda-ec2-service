@@ -36,3 +36,16 @@ export function parseAmiKeyPairs(
 
   return keyPairs as AmiKeyPair[];
 }
+
+export const matchAmiKeyPair = (
+  amiKeyPairs: AmiKeyPair[],
+  amiKeyPair: AmiKeyPair
+): AmiKeyPair | undefined => {
+  const matchedKeyPair = amiKeyPairs.find(
+    (keyPair) =>
+      keyPair.amiId === amiKeyPair.amiId &&
+      keyPair.keyName === amiKeyPair.keyName
+  );
+
+  return matchedKeyPair;
+};
