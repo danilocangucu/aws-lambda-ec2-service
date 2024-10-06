@@ -1,5 +1,5 @@
 .env
-*/node_modules
+/node_modules
 startEC2Instance.zip
-*/dist
+/dist
 .DS_Store
