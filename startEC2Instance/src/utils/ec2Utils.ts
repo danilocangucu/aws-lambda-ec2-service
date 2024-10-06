@@ -1,28 +1,49 @@
 import { EC2 } from "aws-sdk";
 import {
   AmiKeyPair,
-  EC2Instance,
-  EC2InstanceStatus,
+  Instance,
+  InstanceState,
   InstanceType,
 } from "../types/ec2Types";
 import { findEC2Instance } from "../services/ec2Service";
+import { validate, eventSchema } from "./validators";
+import { EventPayload } from "../types/utilTypes";
+import {
+  getEnvVariable,
+  matchAmiKeyPair,
+  parseAmiKeyPairs,
+} from "./dotenvUtils";
 
-export const matchAmiKeyPair = (
-  amiKeyPairs: AmiKeyPair[],
-  amiKeyPair: AmiKeyPair
-): AmiKeyPair | undefined => {
-  const matchedKeyPair = amiKeyPairs.find(
-    (keyPair) =>
-      keyPair.amiId === amiKeyPair.amiId &&
-      keyPair.keyName === amiKeyPair.keyName
-  );
+export function validateAndExtractEventData(event: EventPayload): {
+  amiKeyPair: AmiKeyPair;
+  instanceType: InstanceType;
+  instanceState: InstanceState;
+} {
+  validate(event, eventSchema);
 
-  return matchedKeyPair;
-};
+  const { amiKeyPair, instanceType, instanceState } = event;
+
+  const amiKeyPairsString = getEnvVariable("AMI_KEY_PAIRS");
+  if (!amiKeyPairsString) {
+    throw new Error("AMI_KEY_PAIRS is not defined in environment variables.");
+  }
+
+  const amiKeyPairs = parseAmiKeyPairs(amiKeyPairsString);
+  if (!amiKeyPairs) {
+    throw new Error("Invalid format for AMI key pairs.");
+  }
+
+  const matchedKeyPair = matchAmiKeyPair(amiKeyPairs, amiKeyPair);
+  if (!matchedKeyPair) {
+    throw new Error("AMI key pair not found.");
+  }
+
+  return { amiKeyPair: matchedKeyPair, instanceType, instanceState };
+}
 
 export const convertAWSTypeToLocalEC2Instance = (
   response: EC2.Instance
-): EC2Instance | null => {
+): Instance | null => {
   if (!response.InstanceId || !response.ImageId || !response.KeyName) {
     console.error("Missing required fields in EC2 instance response");
     return null;
@@ -33,7 +54,7 @@ export const convertAWSTypeToLocalEC2Instance = (
     keyName: response.KeyName,
     instanceId: response.InstanceId,
     publicIp: response.PublicIpAddress || "N/A",
-    status: response.State?.Name as EC2InstanceStatus,
+    status: response.State?.Name as InstanceState,
     instanceType:
       (response.InstanceType as InstanceType) || InstanceType.T3MICRO,
   };
@@ -43,8 +64,8 @@ const MAX_RETRIES = 50;
 const RETRY_DELAY = 500;
 
 export async function waitForInstanceReady(
-  instance: EC2Instance
-): Promise<EC2Instance | null> {
+  instance: Instance
+): Promise<Instance | null> {
   let retries = 0;
 
   while (retries < MAX_RETRIES) {
