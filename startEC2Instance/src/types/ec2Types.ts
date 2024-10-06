@@ -3,7 +3,12 @@ export interface AmiKeyPair {
   keyName: string;
 }
 
-export enum EC2InstanceStatus {
+export enum InstanceState {
+  START = "start",
+  STOP = "stop",
+  REBOOT = "reboot",
+  HIBERNATE = "hibernate",
+  TERMINATE = "terminate",
   RUNNING = "running",
   STOPPED = "stopped",
   TERMINATING = "terminating",
@@ -16,8 +21,8 @@ export enum InstanceType {
   T3MICRO = "t3.micro",
 }
 
-export interface EC2Instance extends AmiKeyPair {
-  status: EC2InstanceStatus;
+export interface Instance extends AmiKeyPair {
+  status: InstanceState;
   instanceId: string;
   publicIp: string;
   instanceType: InstanceType;

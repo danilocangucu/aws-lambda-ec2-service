@@ -1,4 +1,4 @@
-import { InstanceType } from "./ec2Types";
+import { InstanceState, InstanceType } from "./ec2Types";
 
 export interface EventPayload {
   amiKeyPair: {
@@ -6,4 +6,5 @@ export interface EventPayload {
     keyName: string;
   };
   instanceType: InstanceType;
+  instanceState: InstanceState;
 }

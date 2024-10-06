@@ -1,12 +1,10 @@
 import AWS from "aws-sdk";
-import { EC2Instance } from "../types/ec2Types";
-import { getEnvVariable } from "../utils/dotenv";
+import { Instance } from "../types/ec2Types";
+import { getEnvVariable } from "../utils/dotenvUtils";
 
 const domainUrl = "danilocangucu.net";
 
-export async function updateRoute53(
-  ec2instance: EC2Instance
-): Promise<boolean> {
+export async function updateRoute53(ec2instance: Instance): Promise<boolean> {
   const route53 = new AWS.Route53();
 
   const hostedZoneId = getEnvVariable("HOSTED_ZONE_ID");
