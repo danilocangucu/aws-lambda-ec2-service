@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { InstanceType } from "../types/ec2Types";
+import { InstanceType, InstanceState } from "../types/ec2Types";
 
 export const eventSchema = Joi.object({
   amiKeyPair: Joi.object({
@@ -12,6 +12,10 @@ export const eventSchema = Joi.object({
     .valid(...Object.values(InstanceType))
     .optional()
     .label("Instance Type"),
+  instanceState: Joi.string()
+    .valid(...Object.values(InstanceState))
+    .required()
+    .label("Intance State"),
 });
 
 export const validate = (data: any, schema: Joi.ObjectSchema) => {
