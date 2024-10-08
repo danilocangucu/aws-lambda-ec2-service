@@ -1,12 +1,13 @@
 import { findEC2Instance, handleInstanceState } from "./services/ec2Service";
 import * as dotenv from "dotenv";
 import { validateAndExtractEventData } from "./utils/ec2Utils";
+import { parseJSONBody } from "./utils/validators";
 
 dotenv.config();
 
 exports.handler = async (event: any) => {
   try {
-    const requestBody = JSON.parse(event.body);
+    const requestBody = parseJSONBody(event.body);
 
     const { amiKeyPair, instanceType, instanceState } =
       validateAndExtractEventData(requestBody);
