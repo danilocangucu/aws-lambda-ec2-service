@@ -10,7 +10,10 @@ import {
   convertAWSTypeToLocalEC2Instance,
   waitForInstanceReady,
 } from "../utils/ec2Utils";
-import { updateRoute53 } from "./route53Service";
+import {
+  updateSubdomainWithApiGatewayUrl,
+  updateSubdomainWithEC2Ip,
+} from "./route53Service";
 
 dotenv.config();
 
@@ -96,6 +99,16 @@ async function handleExecuteStateToInstance(
 ) {
   const result = await executeStateToInstance(state, instance);
 
+  if (state === InstanceState.STOP || state === InstanceState.TERMINATE) {
+    console.log("Updating Route 53 with updateSubdomainWithApiGatewayUrl()");
+    const updateResult = await updateSubdomainWithApiGatewayUrl(instance);
+    if (!updateResult) {
+      console.error(
+        `Failed to update subdomain for ${instance.keyName} to API Gateway URL.`
+      );
+    }
+  }
+
   return {
     statusCode: result ? 200 : 500,
     body: result
@@ -151,7 +164,7 @@ async function launchAndConfigureEC2Instance(
     return null;
   }
 
-  const isUpdated = await updateRoute53(readyInstance);
+  const isUpdated = await updateSubdomainWithEC2Ip(readyInstance);
   if (!isUpdated) {
     console.error("Failed to update Route 53 with the new IP address.");
     return null;
