@@ -10,8 +10,6 @@ const domainUrl = "danilocangucu.net";
 const route53 = new AWS.Route53();
 const apiGatewayUrl = getEnvVariable("API_GATEWAY_URL");
 
-// TODO request certificate via ACM for *.danilocangucu.net
-
 export async function updateSubdomainWithEC2Ip(
   ec2instance: Instance
 ): Promise<boolean> {
@@ -29,7 +27,7 @@ export async function updateSubdomainWithEC2Ip(
           ResourceRecordSet: {
             Name: `${ec2instance.keyName}.${domainUrl}`,
             Type: "A",
-            TTL: 60,
+            TTL: 30,
             ResourceRecords: [{ Value: ec2instance.publicIp }],
           },
         },
@@ -68,7 +66,7 @@ export async function updateSubdomainWithApiGatewayUrl(
           ResourceRecordSet: {
             Name: `${ec2instance.keyName}.${domainUrl}`,
             Type: "CNAME",
-            TTL: 60,
+            TTL: 30,
             ResourceRecords: [{ Value: apiGatewayUrl || "" }],
           },
         },
@@ -130,6 +128,7 @@ export async function getDNSRecordValue(
 }
 
 export async function deleteDNSRecord(
+  // TODO add a type for recordType
   ec2instance: Instance,
   recordType: "A" | "CNAME"
 ): Promise<boolean> {
@@ -154,7 +153,8 @@ export async function deleteDNSRecord(
           ResourceRecordSet: {
             Name: `${ec2instance.keyName}.${domainUrl}`,
             Type: recordType,
-            TTL: 60,
+            // TODO add enum for TTL
+            TTL: 30,
             ResourceRecords: [{ Value: recordValue }],
           },
         },
@@ -170,3 +170,5 @@ export async function deleteDNSRecord(
     return false;
   }
 }
+
+// TODO add a function to increase the TTL of a record when record is stabe
