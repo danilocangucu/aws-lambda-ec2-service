@@ -86,10 +86,12 @@ function handleInstanceAlreadyRunning(foundInstance: Instance) {
     `Instance already running: ${foundInstance.keyName} with IP: ${foundInstance.publicIp}`
   );
   return {
-    statusCode: 200,
-    body: JSON.stringify(
-      `Instance already running: ${foundInstance.keyName} with IP: ${foundInstance.publicIp}`
-    ),
+    statusCode: 409,
+    body: {
+      instanceId: foundInstance.instanceId,
+      publicIp: foundInstance.publicIp,
+    },
+    message: `A ${foundInstance.keyName}'s instance is already running.`,
   };
 }
 
@@ -111,9 +113,13 @@ async function handleExecuteStateToInstance(
 
   return {
     statusCode: result ? 200 : 500,
-    body: result
+    body: {
+      instanceId: instance.instanceId,
+      publicIp: instance.publicIp,
+    },
+    message: result
       ? `Instance ${instance.keyName} ${state.toLowerCase()}d successfully.`
-      : `Failed to ${state.toLowerCase()} the instance ${instance.keyName}.`,
+      : `Failed to ${state.toLowerCase()} ${instance.keyName} instance.`,
   };
 }
 
@@ -132,7 +138,11 @@ async function handleStartNewInstance(
 
   return {
     statusCode: 200,
-    body: `EC2 instance launched: ${readyInstance.keyName} with IP: ${readyInstance.publicIp}`,
+    body: {
+      instanceId: readyInstance.instanceId,
+      publicIp: readyInstance.publicIp,
+    },
+    message: `EC2 instance for ${readyInstance.keyName} launched successfully.`,
   };
 }
 
